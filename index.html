@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Učko</title>
+  <title>Brihta</title>
   <link rel="stylesheet" href="style.css?v=6.0">
 </head>
 <body>
@@ -19,8 +19,7 @@
           <span id="summaryDataset">—</span>
           <span class="summary-sep">·</span>
           <span id="summaryMode">—</span>
-          <span class="summary-sep">·</span>
-          <span id="summaryFilter">—</span>
+          <span id="summaryFilter" style="display:none"></span>
         </div>
         <button class="toolbar-toggle-btn" id="toolbarToggle" title="Nastavitve">⚙️</button>
       </div>
@@ -52,18 +51,7 @@
             </select>
           </div>
 
-          <!-- Filters -->
-          <div class="ctrl-group">
-            <label class="ctrl-label">Filter</label>
-            <div class="filter-dropdown">
-              <button class="filter-btn" id="filterToggle">⚙ Besede ▾</button>
-              <div class="filter-panel" id="filterPanel">
-                <label class="toggle-lbl"><input type="checkbox" id="chkWords" checked> Besede</label>
-                <label class="toggle-lbl"><input type="checkbox" id="chkPhrases" checked> Besedne zveze</label>
-                <label class="toggle-lbl"><input type="checkbox" id="chkSentences" checked> Povedi</label>
-              </div>
-            </div>
-          </div>
+
 
         </div>
       </div>
@@ -101,11 +89,7 @@
             </div>
           </div>
 
-          <div class="audio-controls">
-            <button class="btn-audio" id="audioBtn" title="Poslušaj izgovorjavo" disabled>
-              🔊 Poslušaj
-            </button>
-          </div>
+
 
           <div class="controls">
             <button class="btn" id="prevBtn" disabled>⬅️ Prejšnja</button>
@@ -172,62 +156,14 @@
     function updateSummary() {
       const datasetSel = document.getElementById('dataset');
       const modeSel    = document.getElementById('modeSelect');
-      const w = document.getElementById('chkWords').checked;
-      const p = document.getElementById('chkPhrases').checked;
-      const s = document.getElementById('chkSentences').checked;
 
       const datasetText = datasetSel.options[datasetSel.selectedIndex]?.text || '—';
-      // strip emoji from dataset name for brevity
       document.getElementById('summaryDataset').textContent = datasetText.replace(/^[^\w]*/, '');
 
       const modeMap = { flashcard: '🃏 Kartice', quiz: '🎯 Kviz', timed: '⏱️ Tekma' };
       document.getElementById('summaryMode').textContent = modeMap[modeSel.value] || modeSel.value;
-
-      const all = w && p && s;
-      const none = !w && !p && !s;
-      const parts = [];
-      if (w) parts.push('B'); if (p) parts.push('BZ'); if (s) parts.push('P');
-      document.getElementById('summaryFilter').textContent =
-        all ? 'Vse' : none ? 'Nič' : parts.join('+');
+      document.getElementById('summaryFilter').textContent = '';
     }
-
-    /* ── Filter dropdown toggle ── */
-    document.getElementById('filterToggle').addEventListener('click', function(e) {
-      e.stopPropagation();
-      const panel = document.getElementById('filterPanel');
-      const isOpen = panel.classList.contains('open');
-      if (!isOpen) {
-        // Position panel below the button using fixed coords
-        const rect = this.getBoundingClientRect();
-        panel.style.top  = (rect.bottom + 6) + 'px';
-        panel.style.left = rect.left + 'px';
-      }
-      panel.classList.toggle('open');
-    });
-    document.addEventListener('click', function() {
-      document.getElementById('filterPanel').classList.remove('open');
-    });
-    document.getElementById('filterPanel').addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
-
-    /* ── Filter button label ── */
-    function updateFilterLabel() {
-      const w = document.getElementById('chkWords').checked;
-      const p = document.getElementById('chkPhrases').checked;
-      const s = document.getElementById('chkSentences').checked;
-      const all = w && p && s;
-      const none = !w && !p && !s;
-      const parts = [];
-      if (w) parts.push('B');
-      if (p) parts.push('BZ');
-      if (s) parts.push('P');
-      document.getElementById('filterToggle').textContent = all ? '⚙ Vse ▾' : none ? '⚙ Nič ▾' : '⚙ ' + parts.join('+') + ' ▾';
-      updateSummary();
-    }
-    ['chkWords','chkPhrases','chkSentences'].forEach(id => {
-      document.getElementById(id).addEventListener('change', updateFilterLabel);
-    });
 
     /* ── Mode select ── */
     document.getElementById('modeSelect').addEventListener('change', function() {

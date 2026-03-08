@@ -319,18 +319,7 @@ function getCategory(text) {
 }
 
 function applyFilters() {
-  const showWords     = document.getElementById('chkWords').checked;
-  const showPhrases   = document.getElementById('chkPhrases').checked;
-  const showSentences = document.getElementById('chkSentences').checked;
-  let filtered = MASTER_DATA.filter(item => {
-    const eng = item.answer ?? item.english ?? "";
-    const cat = getCategory(eng);
-    if (cat === "word"     && showWords)     return true;
-    if (cat === "phrase"   && showPhrases)   return true;
-    if (cat === "sentence" && showSentences) return true;
-    return false;
-  });
-  let finalCards = filtered.map((item, index) => {
+  let finalCards = MASTER_DATA.map((item, index) => {
     const valSlo = item.question ?? item.slovenian ?? "";
     const valEng = item.answer   ?? item.english   ?? "";
     const isSloToEng = Math.random() < 0.5;
@@ -340,14 +329,14 @@ function applyFilters() {
       back: isSloToEng ? valEng : valSlo, 
       english: valEng, 
       isSloToEng,
-      image: item.image // <-- We added this!
+      image: item.image
     };
   });
   return shuffle(finalCards);
 }
 
 function setLoadingUI(loading) {
-  const buttons = ["prevBtn","nextBtn","audioBtn"].map(id => document.getElementById(id)).filter(Boolean);
+  const buttons = ["prevBtn","nextBtn"].map(id => document.getElementById(id)).filter(Boolean);
   buttons.forEach(b => b.disabled = loading);
   if (loading) {
     setFaceText(document.getElementById("cardFront"), "Nalagam kartice…");
@@ -1251,14 +1240,14 @@ document.getElementById("subject").addEventListener("change", function() {
   if (!ds) {
     setFaceText(document.getElementById('cardFront'), "Ta predmet še nima naborov 📚");
     setFaceText(document.getElementById('cardBack'),  "Kmalu prihaja!");
-    ['prevBtn','nextBtn','audioBtn'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = true; });
+    ['prevBtn','nextBtn'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = true; });
     return;
   }
   loadAllUnitsPool().then(() => reloadBtn.click());
 });
 
 function clearDomListeners() {
-  ['prevBtn','nextBtn','audioBtn','flashcard'].forEach(id => {
+  ['prevBtn','nextBtn','flashcard'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const clone = el.cloneNode(true);
@@ -1272,11 +1261,7 @@ function reinitApp() {
   else if (currentMode === 'timed') reinitTimedApp();
 }
 
-['chkWords','chkPhrases','chkSentences'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    if (MASTER_DATA.length > 0) reinitApp();
-  });
-});
+
 
 reloadBtn.addEventListener("click", async () => {
   const ds = currentDataset();
