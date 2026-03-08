@@ -656,8 +656,7 @@ class FlashcardApp {
     this.nextBtn        = document.getElementById('nextBtn');
   }
 
-  setupAudio() {
-    // audio removed
+  setupAudio() {}
 
   setupEventListeners() {
     this.cardElement.onclick      = () => this.flipCard();
