@@ -527,7 +527,6 @@ class QuizApp {
     area.innerHTML = `
       <div class="quiz-meta">
         <div class="quiz-counter">Vprašanje ${this.index + 1} / ${this.cards.length}</div>
-        <div class="quiz-direction-badge ${card.isSloToEng ? 'slo-to-eng' : 'eng-to-slo'}">${card.isSloToEng ? 'SLO → EN' : 'EN → SLO'}</div>
       </div>
       <div class="quiz-progress-wrap">
         <div class="quiz-progress-fill" style="width:${((this.index+1)/this.cards.length*100)}%"></div>
@@ -655,28 +654,10 @@ class FlashcardApp {
     this.directionBadge = document.getElementById('directionBadge');
     this.prevBtn        = document.getElementById('prevBtn');
     this.nextBtn        = document.getElementById('nextBtn');
-    this.audioBtn       = document.getElementById('audioBtn');
   }
 
   setupAudio() {
-    if ('speechSynthesis' in window) {
-      this.audioBtn.style.display = 'inline-block';
-      this.audioBtn.onclick = () => this.playAudio();
-    } else {
-      this.audioBtn.style.display = 'none';
-    }
-  }
-
-  playAudio() {
-    if (!this.cards || this.cards.length === 0) return;
-    const text = this.cards[this.currentIndex].english;
-    if (text && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = 'en-US'; utt.rate = 0.9;
-      window.speechSynthesis.speak(utt);
-    }
-  }
+    // audio removed
 
   setupEventListeners() {
     this.cardElement.onclick      = () => this.flipCard();
@@ -733,8 +714,8 @@ class FlashcardApp {
       if (imgEl) imgEl.style.display = 'none';
       this.cardCounter.textContent = 'Kartica 0 od 0';
       if (this.progressBar) this.progressBar.style.width = '0%';
-      if (this.directionBadge) { this.directionBadge.textContent = 'PRAZNO'; this.directionBadge.className = 'direction-badge slo-to-eng'; }
-      this.prevBtn.disabled = this.nextBtn.disabled = this.audioBtn.disabled = true;
+      if (this.directionBadge) this.directionBadge.style.display = 'none';
+      this.prevBtn.disabled = this.nextBtn.disabled = true;
       this.isFlipped = false;
       this.cardElement.classList.remove('flipped');
       return;
@@ -747,11 +728,8 @@ class FlashcardApp {
     this.cardElement.classList.remove('flipped');
     this.cardCounter.textContent = `Kartica ${this.currentIndex + 1} od ${this.cards.length}`;
     if (this.progressBar) this.progressBar.style.width = ((this.currentIndex+1)/this.cards.length*100)+'%';
-    if (this.directionBadge) {
-      this.directionBadge.textContent = card.isSloToEng ? 'SLO → EN' : 'EN → SLO';
-      this.directionBadge.className   = 'direction-badge ' + (card.isSloToEng ? 'slo-to-eng' : 'eng-to-slo');
-    }
-    this.prevBtn.disabled = this.nextBtn.disabled = this.audioBtn.disabled = false;
+    if (this.directionBadge) this.directionBadge.style.display = 'none';
+    this.prevBtn.disabled = this.nextBtn.disabled = false;
   }
 }
 
