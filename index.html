@@ -14,7 +14,7 @@
 
       <!-- Always-visible top row -->
       <div class="toolbar-top">
-        <div class="brand"><img src="brihta.png" alt="Brihta" class="brand-logo"><span>Brihta</span></div>
+        <div class="brand"><img src="Brihta.svg" alt="Brihta" class="brand-logo"><span>Brihta</span></div>
         <div class="toolbar-summary" id="toolbarSummary">
           <span id="summaryDataset">—</span>
           <span class="summary-sep">·</span>
@@ -48,6 +48,7 @@
               <option value="flashcard">🃏 Kartice</option>
               <option value="quiz">🎯 Kviz</option>
               <option value="timed">⏱️ Tekma s časom</option>
+              <option value="cloze">✏️ Prazna polja</option>
             </select>
           </div>
 
@@ -116,6 +117,13 @@
           </div>
         </div>
 
+        <!-- CLOZE PANEL -->
+        <div id="clozePanel" class="cloze-panel" style="display:none">
+          <div id="clozeArea" class="cloze-area" style="width:100%">
+            <div class="quiz-empty">Naloži nabor kartic in začni! ✏️</div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -142,7 +150,7 @@
       e.stopPropagation();
       isCollapsed() ? expandToolbar() : collapseToolbar();
       // also close filter panel
-      document.getElementById('filterPanel').classList.remove('open');
+      const fp = document.getElementById('filterPanel'); if (fp) fp.classList.remove('open');
     });
 
     // Tap anywhere outside toolbar to collapse
@@ -160,7 +168,7 @@
       const datasetText = datasetSel.options[datasetSel.selectedIndex]?.text || '—';
       document.getElementById('summaryDataset').textContent = datasetText.replace(/^[^\w]*/, '');
 
-      const modeMap = { flashcard: '🃏 Kartice', quiz: '🎯 Kviz', timed: '⏱️ Tekma' };
+      const modeMap = { flashcard: '🃏 Kartice', quiz: '🎯 Kviz', timed: '⏱️ Tekma', cloze: '✏️ Prazna polja' };
       document.getElementById('summaryMode').textContent = modeMap[modeSel.value] || modeSel.value;
       document.getElementById('summaryFilter').textContent = '';
     }

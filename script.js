@@ -206,8 +206,8 @@ async function maybeShowCardImage(card) {
   const faceEl = document.getElementById('cardFront');
   if (!imgEl) return;
   
-  // Hide image if not in druzba or no image term exists
-  if (currentSubject !== 'druzba' || !card.image) {
+  // Hide image if not in naravoslovje or no image term exists
+  if (currentSubject !== 'naravoslovje' || !card.image) {
     imgEl.style.display = 'none';
     autoFitCardText(faceEl); // Make sure text fits without image
     return;
@@ -376,15 +376,16 @@ const SoundFX = (() => {
   }
 
   function correct() {
-    // Soft, modern, quick ascending bubble/ding
-    playTone({ freq: 800, freqEnd: 1000, type: 'sine', dur: 0.1, vol: 0.3 });
-    setTimeout(() => playTone({ freq: 1200, freqEnd: 1600, type: 'sine', dur: 0.2, vol: 0.2 }), 80);
+    // Duolingo-style: bright cheerful three-note chime C5-E5-C6
+    playTone({ freq: 523, freqEnd: 523, type: 'sine', dur: 0.14, vol: 0.38 });
+    setTimeout(() => playTone({ freq: 659, freqEnd: 659, type: 'sine', dur: 0.22, vol: 0.32 }), 110);
+    setTimeout(() => playTone({ freq: 1047, freqEnd: 1047, type: 'sine', dur: 0.28, vol: 0.18 }), 220);
   }
 
   function wrong() {
-    // Low descending buzz: two-tone drop
-    playTone({ freq: 320, freqEnd: 180, type: 'sawtooth', dur: 0.18, vol: 0.22 });
-    setTimeout(() => playTone({ freq: 200, freqEnd: 140, type: 'square', dur: 0.22, vol: 0.15 }), 180);
+    // Duolingo-style: dull low bwonk - descending minor second
+    playTone({ freq: 380, freqEnd: 300, type: 'triangle', dur: 0.18, vol: 0.35 });
+    setTimeout(() => playTone({ freq: 280, freqEnd: 220, type: 'triangle', dur: 0.28, vol: 0.28 }), 150);
   }
 
   function rankUp() {
@@ -469,7 +470,7 @@ function updateScoreHUD(score, streak) {
 // ── Quiz App ──────────────────────────────────────────────────────────────────
 class QuizApp {
   constructor(cards) {
-    this.cards    = cards;
+    this.cards    = shuffle([...cards]);
     this.index    = 0;
     this.score    = parseInt(localStorage.getItem(SCORE_KEY) || '0');
     this.streak   = 0;
@@ -531,7 +532,8 @@ class QuizApp {
       <div class="quiz-progress-wrap">
         <div class="quiz-progress-fill" style="width:${((this.index+1)/this.cards.length*100)}%"></div>
       </div>
-      <div class="quiz-question-card">
+      <div class="quiz-question-card ${card.isSloToEng ? 'mode-question' : 'mode-answer'}">
+        <span class="card-mode-icon">${card.isSloToEng ? '🔍' : '💡'}</span>
         <div class="quiz-question-text">${escapeHtml(card.front)}</div>
       </div>
       ${mult > 1 ? `<div class="quiz-mult-notify">🔥 Množilnik <strong>×${mult}</strong> aktiven!</div>` : ''}
@@ -625,7 +627,13 @@ class QuizApp {
   nextQuestion() {
     if (this._autoTimer) clearTimeout(this._autoTimer);
     this.answered = false;
-    this.index = (this.index + 1) % this.cards.length;
+    const next = this.index + 1;
+    if (next >= this.cards.length) {
+      this.cards = shuffle([...this.cards]);
+      this.index = 0;
+    } else {
+      this.index = next;
+    }
     this.render();
   }
 }
@@ -725,6 +733,37 @@ class FlashcardApp {
     maybeShowCardImage(card);
     this.isFlipped = false;
     this.cardElement.classList.remove('flipped');
+
+    // ── Visual mode indicator ──────────────────────────────────────────────
+    this.cardElement.classList.remove('mode-question', 'mode-answer');
+
+    // Ensure one icon on each face
+    let iconFront = this.cardFront.querySelector('.card-mode-icon');
+    if (!iconFront) {
+      iconFront = document.createElement('span');
+      iconFront.className = 'card-mode-icon';
+      this.cardFront.appendChild(iconFront);
+    }
+    let iconBack = this.cardBack.querySelector('.card-mode-icon');
+    if (!iconBack) {
+      iconBack = document.createElement('span');
+      iconBack.className = 'card-mode-icon';
+      this.cardBack.appendChild(iconBack);
+    }
+
+    if (card.isSloToEng) {
+      // Front = question, Back = answer
+      this.cardElement.classList.add('mode-question');
+      iconFront.textContent = '🔍';  iconFront.title = 'Vprašanje';
+      iconBack.textContent  = '💡';  iconBack.title  = 'Odgovor';
+    } else {
+      // Front = answer, Back = question
+      this.cardElement.classList.add('mode-answer');
+      iconFront.textContent = '💡';  iconFront.title = 'Odgovor';
+      iconBack.textContent  = '🔍';  iconBack.title  = 'Vprašanje';
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     this.cardCounter.textContent = `Kartica ${this.currentIndex + 1} od ${this.cards.length}`;
     if (this.progressBar) this.progressBar.style.width = ((this.currentIndex+1)/this.cards.length*100)+'%';
     if (this.directionBadge) this.directionBadge.style.display = 'none';
@@ -913,7 +952,8 @@ class TimedApp {
       </div>
 
       <!-- QUESTION -->
-      <div class="quiz-question-card">
+      <div class="quiz-question-card ${card.isSloToEng ? 'mode-question' : 'mode-answer'}">
+        <span class="card-mode-icon">${card.isSloToEng ? '🔍' : '💡'}</span>
         <div class="quiz-question-text">${escapeHtml(card.front)}</div>
       </div>
 
@@ -1114,22 +1154,246 @@ class TimedApp {
 }
 
 
+
+// ── Cloze App ─────────────────────────────────────────────────────────────────
+class ClozeApp {
+  constructor(data) {
+    this.data      = shuffle([...data]); // randomise on every new session
+    this.index     = 0;
+    this.level     = null;    // null=front, 1=vajenec, 2=mojster
+    this.revealed  = false;   // full answer shown?
+    this.results   = [];      // {question, answer, knew}
+    this.done      = false;
+    this.handleKey = this.handleKey.bind(this);
+    document.addEventListener('keydown', this.handleKey);
+    this.render();
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this.handleKey);
+  }
+
+  handleKey(e) {
+    if (this.done) return;
+    if (!this.level) {
+      if (e.code === 'Digit1' || e.code === 'Numpad1') this.showLevel(1);
+      if (e.code === 'Digit2' || e.code === 'Numpad2') this.showLevel(2);
+    } else if (!this.revealed) {
+      if (e.code === 'Space' || e.code === 'ArrowDown') { e.preventDefault(); this.revealAnswer(); }
+    } else {
+      if (e.code === 'ArrowRight' || e.code === 'KeyY') { e.preventDefault(); this.gradeCard(true); }
+      if (e.code === 'ArrowLeft'  || e.code === 'KeyN') { e.preventDefault(); this.gradeCard(false); }
+    }
+  }
+
+  render() {
+    const area = document.getElementById('clozeArea');
+    if (!area) return;
+    if (!this.data || this.data.length === 0) {
+      area.innerHTML = `<div class="quiz-empty">Najprej naloži nabor kartic 👆</div>`;
+      return;
+    }
+    if (this.done) { this.renderSummary(); return; }
+
+    const item   = this.data[this.index];
+    const total  = this.data.length;
+    const isBack = this.level !== null;
+
+    const clozeText = isBack
+      ? (this.level === 1
+          ? (item.cloze_levels?.level_1 || item.answer)
+          : (item.cloze_levels?.level_2 || item.answer))
+      : null;
+
+    let backContent = '';
+    if (isBack) {
+      backContent = `
+        <div class="cloze-level-label">${this.level === 1 ? '🔰 Vajenec' : '⚔️ Mojster'}</div>
+        <div class="cloze-answer-text">${this.renderCloze(clozeText || '')}</div>
+        ${this.revealed ? `
+          <div class="cloze-reveal-box">
+            <div class="cloze-reveal-label">✅ Celoten odgovor:</div>
+            <div class="cloze-reveal-text">${escapeHtml(item.answer)}</div>
+          </div>
+          <div class="cloze-grade-btns">
+            <button class="cloze-grade-btn cloze-retry" id="clozeRetry">❌ Še vadim</button>
+            <button class="cloze-grade-btn cloze-knew" id="clozeKnew">✅ Znal/a sem</button>
+          </div>
+          <div class="cloze-grade-hint">← Še vadim &nbsp;·&nbsp; Znal/a sem →</div>
+        ` : `
+          <button class="cloze-reveal-btn" id="clozeRevealBtn">👁️ Pokaži rešitev</button>
+          <div class="cloze-grade-hint">Odgovori ustno, nato preveri</div>
+        `}
+      `;
+    }
+
+    area.innerHTML = `
+      <div class="cloze-counter">Kartica ${this.index + 1} od ${total}</div>
+      <div class="cloze-progress-wrap">
+        <div class="cloze-progress-fill" style="width:${((this.index + 1) / total) * 100}%"></div>
+      </div>
+      <div class="cloze-card-container">
+        <div class="cloze-card ${isBack ? 'cloze-flipped' : ''}" id="clozeCard">
+          <div class="cloze-face cloze-front">
+            <div class="cloze-level-btns">
+              <button class="cloze-level-btn cloze-l1" id="clozeL1" title="Vajenec – prvi znaki vidni">🔰 Vajenec</button>
+              <button class="cloze-level-btn cloze-l2" id="clozeL2" title="Mojster – besede skrite">⚔️ Mojster</button>
+            </div>
+            <div class="cloze-question-text">${escapeHtml(item.question)}</div>
+            <div class="cloze-hint">Izberi stopnjo ↑</div>
+          </div>
+          <div class="cloze-face cloze-back">${backContent}</div>
+        </div>
+      </div>
+      <div class="keyboard-hint">💡 1/2 za stopnjo · Presledek za rešitev · ←/→ za oceno</div>
+    `;
+
+    document.getElementById('clozeL1')?.addEventListener('click', () => this.showLevel(1));
+    document.getElementById('clozeL2')?.addEventListener('click', () => this.showLevel(2));
+    document.getElementById('clozeRevealBtn')?.addEventListener('click', () => this.revealAnswer());
+    document.getElementById('clozeKnew')?.addEventListener('click', () => this.gradeCard(true));
+    document.getElementById('clozeRetry')?.addEventListener('click', () => this.gradeCard(false));
+
+    // Auto-size card to tallest face so buttons are never hidden
+    requestAnimationFrame(() => {
+      const card  = document.getElementById('clozeCard');
+      const front = card?.querySelector('.cloze-front');
+      const back  = card?.querySelector('.cloze-back');
+      if (!card || !front || !back) return;
+      // Temporarily flatten back face (rotateY 180°) to measure its true height
+      back.style.transform   = 'rotateY(0deg)';
+      back.style.visibility  = 'hidden';
+      const backH  = back.scrollHeight;
+      back.style.transform   = '';
+      back.style.visibility  = '';
+      const frontH = front.scrollHeight;
+      card.style.height = Math.max(frontH, backH, 200) + 4 + 'px';
+    });
+  }
+
+  renderSummary() {
+    const area  = document.getElementById('clozeArea');
+    const knew  = this.results.filter(r => r.knew);
+    const retry = this.results.filter(r => !r.knew);
+    const pct   = Math.round((knew.length / this.results.length) * 100);
+    const medal = pct === 100 ? '🏆' : pct >= 70 ? '⭐' : pct >= 40 ? '📚' : '💪';
+
+    const listHtml = (items, cls) => items.length === 0
+      ? `<div class="cloze-sum-empty">—</div>`
+      : items.map(r => `
+          <div class="cloze-sum-item ${cls}">
+            <span class="cloze-sum-q">${escapeHtml(r.question)}</span>
+            <span class="cloze-sum-a">${escapeHtml(r.answer)}</span>
+          </div>`).join('');
+
+    area.innerHTML = `
+      <div class="cloze-summary">
+        <div class="cloze-sum-medal">${medal}</div>
+        <div class="cloze-sum-score">${knew.length} / ${this.results.length} <span>(${pct}%)</span></div>
+        <div class="cloze-sum-subtitle">pravilnih odgovorov</div>
+        <div class="cloze-sum-sections">
+          <div class="cloze-sum-section">
+            <div class="cloze-sum-heading cloze-sum-knew-head">✅ Znal/a sem (${knew.length})</div>
+            <div class="cloze-sum-list">${listHtml(knew, 'knew')}</div>
+          </div>
+          <div class="cloze-sum-section">
+            <div class="cloze-sum-heading cloze-sum-retry-head">❌ Še vadim (${retry.length})</div>
+            <div class="cloze-sum-list">${listHtml(retry, 'retry')}</div>
+          </div>
+        </div>
+        <button class="cloze-restart-btn" id="clozeRestartBtn">🔄 Ponovi vse kartice</button>
+        ${retry.length > 0 ? `<button class="cloze-restart-btn cloze-retry-only-btn" id="clozeRetryOnlyBtn">❌ Ponovi samo neznane (${retry.length})</button>` : ''}
+      </div>
+    `;
+
+    document.getElementById('clozeRestartBtn')?.addEventListener('click', () => this.restart(false));
+    document.getElementById('clozeRetryOnlyBtn')?.addEventListener('click', () => this.restart(true));
+  }
+
+  renderCloze(text) {
+    // Wrap [first-letter + underscores + any trailing punctuation] in a nowrap span
+    // so nothing following a blank word can drift to the next line
+    return escapeHtml(text).replace(/([A-Za-zčšžČŠŽ])(_{2,})([.,;:!?]?)/g,
+      (_, letter, blanks, punct) =>
+        `<span class="cloze-word">${letter}<span class="cloze-blank">${blanks}</span>${punct}</span>`
+    );
+  }
+
+  showLevel(n) {
+    this.level    = n;
+    this.revealed = false;
+    this.render();
+    requestAnimationFrame(() => {
+      const card = document.getElementById('clozeCard');
+      if (card) card.classList.add('cloze-flipped');
+    });
+  }
+
+  revealAnswer() {
+    this.revealed = true;
+    this.render();
+    requestAnimationFrame(() => {
+      const card = document.getElementById('clozeCard');
+      if (card) card.classList.add('cloze-flipped');
+    });
+  }
+
+  gradeCard(knew) {
+    const item = this.data[this.index];
+    this.results.push({ question: item.question, answer: item.answer, knew });
+    SoundFX[knew ? 'correct' : 'wrong']();
+    this.index++;
+    this.level    = null;
+    this.revealed = false;
+    if (this.index >= this.data.length) this.done = true;
+    this.render();
+  }
+
+  restart(retryOnly) {
+    if (retryOnly) {
+      const toRetry = this.results.filter(r => !r.knew).map(r => r.question);
+      this.data = shuffle(this.data.filter(item => toRetry.includes(item.question)));
+    } else {
+      this.data = shuffle([...this.data]);
+    }
+    this.index    = 0;
+    this.level    = null;
+    this.revealed = false;
+    this.results  = [];
+    this.done     = false;
+    this.render();
+  }
+}
+
+function reinitClozeApp() {
+  if (window.clozeApp) { window.clozeApp.destroy(); window.clozeApp = null; }
+  if (MASTER_DATA.length === 0) {
+    const area = document.getElementById('clozeArea');
+    if (area) area.innerHTML = `<div class="quiz-empty">Najprej naloži nabor kartic 👆</div>`;
+    return;
+  }
+  window.clozeApp = new ClozeApp(MASTER_DATA);
+}
+
 function switchMode(mode) {
   currentMode = mode;
   const fcPanel  = document.getElementById('flashcardPanel');
   const qzPanel  = document.getElementById('quizPanel');
   const tmPanel  = document.getElementById('timedPanel');
+  const czPanel  = document.getElementById('clozePanel');
   const scoreHUD = document.getElementById('scoreHUD');
   const sel      = document.getElementById('modeSelect');
   if (sel && sel.value !== mode) sel.value = mode;
 
-  if (window.app)      { window.app.destroy();      window.app      = null; }
-  if (window.quizApp)  { window.quizApp.destroy();   window.quizApp  = null; }
-  if (window.timedApp) { window.timedApp.destroy();  window.timedApp = null; }
+  if (window.app)       { window.app.destroy();       window.app       = null; }
+  if (window.quizApp)   { window.quizApp.destroy();    window.quizApp   = null; }
+  if (window.timedApp)  { window.timedApp.destroy();   window.timedApp  = null; }
+  if (window.clozeApp)  { window.clozeApp.destroy();   window.clozeApp  = null; }
 
   fcPanel.style.display  = 'none';
   qzPanel.style.display  = 'none';
   if (tmPanel) tmPanel.style.display = 'none';
+  if (czPanel) czPanel.style.display = 'none';
   scoreHUD.style.display = 'none';
 
   if (mode === 'flashcard') {
@@ -1144,6 +1408,9 @@ function switchMode(mode) {
   } else if (mode === 'timed') {
     if (tmPanel) tmPanel.style.display = 'flex';
     reinitTimedApp();
+  } else if (mode === 'cloze') {
+    if (czPanel) czPanel.style.display = 'flex';
+    reinitClozeApp();
   }
 }
 
@@ -1236,6 +1503,7 @@ function reinitApp() {
   if (currentMode === 'flashcard') reinitFlashcardApp();
   else if (currentMode === 'quiz') reinitQuizApp();
   else if (currentMode === 'timed') reinitTimedApp();
+  else if (currentMode === 'cloze') reinitClozeApp();
 }
 
 
@@ -1244,9 +1512,10 @@ reloadBtn.addEventListener("click", async () => {
   const ds = currentDataset();
   if (!ds) return;
   localStorage.setItem(SELECT_KEY, ds.id);
-  if (window.app)      { window.app.destroy();      window.app      = null; }
-  if (window.quizApp)  { window.quizApp.destroy();   window.quizApp  = null; }
-  if (window.timedApp) { window.timedApp.destroy();  window.timedApp = null; }
+  if (window.app)       { window.app.destroy();       window.app       = null; }
+  if (window.quizApp)   { window.quizApp.destroy();    window.quizApp   = null; }
+  if (window.timedApp)  { window.timedApp.destroy();   window.timedApp  = null; }
+  if (window.clozeApp)  { window.clozeApp.destroy();   window.clozeApp  = null; }
   clearDomListeners();
   setLoadingUI(true);
   try {
@@ -1259,6 +1528,8 @@ reloadBtn.addEventListener("click", async () => {
       reinitQuizApp();
     } else if (currentMode === 'timed') {
       reinitTimedApp();
+    } else if (currentMode === 'cloze') {
+      reinitClozeApp();
     }
     // Collapse toolbar once the game is running
     if (typeof collapseToolbar === 'function') collapseToolbar();
